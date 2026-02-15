@@ -14,6 +14,9 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedPages, setExpandedPages] = useState({}); // Tracking für aufgeklappte Seiten
 
+  // Erkennen für iFrame/Embed Styling
+  const isEmbedded = window.self !== window.top;
+
   useEffect(() => {
     const loadPdf = async () => {
       if (!pdfUrl) return;
@@ -81,7 +84,7 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
       <span>
         {parts.map((part, i) => 
           part.toLowerCase() === highlight.toLowerCase() 
-            ? <mark key={i} style={{ backgroundColor: '#ffeb3b', padding: '2px', borderRadius: '2px' }}>{part}</mark> 
+            ? <mark key={i} style={{ backgroundColor: '#ffeb3b', padding: '2px', borderRadius: '2px', color: '#000' }}>{part}</mark> 
             : part
         )}
       </span>
@@ -89,8 +92,18 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif', maxWidth: '800px', margin: '0 auto', border: '1px solid #eee', borderRadius: '12px', backgroundColor: '#fff' }}>
-      <h2 style={{ marginTop: 0 }}>{title}</h2>
+    <div style={{ 
+      padding: isEmbedded ? '10px' : '20px', 
+      fontFamily: 'system-ui, sans-serif', 
+      width: '100%',
+      maxWidth: '800px', 
+      margin: '0 auto', 
+      border: isEmbedded ? 'none' : '1px solid #eee', // Kein Rahmen im iFrame
+      borderRadius: isEmbedded ? '0' : '12px',
+      backgroundColor: isEmbedded ? 'transparent' : '#fff', // Passt sich Host-Seite an
+      boxShadow: isEmbedded ? 'none' : '0 4px 12px rgba(0,0,0,0.05)'
+    }}>
+      <h2 style={{ marginTop: 0, fontSize: '1.5rem', wordBreak: 'break-word' }}>{title}</h2>
 
       {isLoading ? (
         <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
@@ -104,14 +117,16 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ 
-              padding: '12px', 
+              padding: '14px', 
               width: '100%', 
-              fontSize: '16px',
+              fontSize: '16px', // 16px verhindert Auto-Zoom auf iOS!
               borderRadius: '8px',
               border: '1px solid #ccc',
               boxSizing: 'border-box',
               outline: 'none',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)',
+              backgroundColor: '#fff',
+              color: '#333'
             }}
           />
         </div>
@@ -139,12 +154,20 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
                 borderRadius: '8px',
                 padding: '15px', 
                 margin: '10px 0',
-                backgroundColor: isExpanded ? '#fff' : '#f9f9f9',
-                boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                transition: 'all 0.2s ease'
+                backgroundColor: isExpanded ? '#fff' : '#fcfcfc',
+                boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s ease',
+                color: '#333'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: '12px',
+                flexWrap: 'wrap', // Erlaubt den Umbruch auf sehr kleinen Handy-Displays
+                gap: '10px'
+              }}>
                 <h4 style={{ margin: 0, fontSize: '1rem' }}>Seite {result.page}</h4>
                 <button 
                   onClick={() => toggleExpand(result.page)}
@@ -152,10 +175,12 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
                     background: '#0070f3',
                     color: 'white',
                     border: 'none',
-                    padding: '5px 12px',
-                    borderRadius: '5px',
+                    padding: '8px 14px',
+                    borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '0.85rem'
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    flexShrink: 0 // Verhindert, dass der Button zusammengequetscht wird
                   }}
                 >
                   {isExpanded ? 'Schließen' : 'Ganze Seite anzeigen'}
@@ -167,7 +192,8 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
                 lineHeight: '1.6', 
                 color: '#444', 
                 fontSize: '0.95rem',
-                whiteSpace: isExpanded ? 'pre-wrap' : 'normal' // Behält Umbrüche im Vollmodus bei
+                wordBreak: 'break-word', // Verhindert, dass lange Wörter das Layout sprengen
+                whiteSpace: isExpanded ? 'pre-wrap' : 'normal' 
               }}>
                 {isExpanded ? (
                   highlightText(result.text, searchTerm)
@@ -184,7 +210,7 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
         })}
 
         {searchTerm && results.length === 0 && !isLoading && (
-          <p style={{ color: '#d9534f', textAlign: 'center', marginTop: '20px' }}>
+          <p style={{ color: '#d9534f', textAlign: 'center', marginTop: '20px', padding: '10px' }}>
             Keine Treffer für "{searchTerm}" gefunden.
           </p>
         )}
