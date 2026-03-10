@@ -7,7 +7,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
+export default function PdfSearch({ pdfList = [], title = "PDF Durchsuchen" }) {
   const [pdfData, setPdfData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState([]);
@@ -18,42 +18,55 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
   const isEmbedded = window.self !== window.top;
 
   useEffect(() => {
-    const loadPdf = async () => {
-      if (!pdfUrl) return;
+    const loadPdfs = async () => {
+      if (!pdfList || pdfList.length === 0) {
+        setIsLoading(false);
+        return;
+      }
       
       try {
         setIsLoading(true);
-        const loadingTask = pdfjsLib.getDocument(pdfUrl);
-        const pdf = await loadingTask.promise;
+        let allExtractedText = [];
 
-        const extractedText = [];
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          
-          // Gruppierung nach Zeilen (Y-Koordinate), um Struktur zu erhalten
-          let lastY, text = '';
-          for (let item of textContent.items) {
-            if (lastY !== item.transform[5] && lastY !== undefined) {
-              text += '\n';
+        // Gehe durch jedes PDF in der Liste
+        for (const pdfFile of pdfList) {
+          const loadingTask = pdfjsLib.getDocument(pdfFile.url);
+          const pdf = await loadingTask.promise;
+
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            
+            // Gruppierung nach Zeilen (Y-Koordinate), um Struktur zu erhalten
+            let lastY, text = '';
+            for (let item of textContent.items) {
+              if (lastY !== item.transform[5] && lastY !== undefined) {
+                text += '\n';
+              }
+              text += item.str + ' ';
+              lastY = item.transform[5];
             }
-            text += item.str + ' ';
-            lastY = item.transform[5];
+            
+            // Speichere zusätzlich den Namen des PDFs und generiere eine eindeutige ID
+            allExtractedText.push({ 
+              id: `${pdfFile.title}-page-${i}`, // Eindeutige ID für das Expand-Tracking
+              pdfTitle: pdfFile.title,
+              page: i, 
+              text: text.trim() 
+            });
           }
-          
-          extractedText.push({ page: i, text: text.trim() });
         }
 
-        setPdfData(extractedText);
+        setPdfData(allExtractedText);
         setIsLoading(false);
       } catch (error) {
-        console.error('Fehler beim Laden der PDF:', error);
+        console.error('Fehler beim Laden der PDFs:', error);
         setIsLoading(false);
       }
     };
 
-    loadPdf();
-  }, [pdfUrl]);
+    loadPdfs();
+  }, [pdfList]);
 
   useEffect(() => {
     if (!searchTerm.trim()) {
@@ -69,10 +82,10 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
     setResults(filtered);
   }, [searchTerm, pdfData]);
 
-  const toggleExpand = (pageNumber) => {
+  const toggleExpand = (id) => {
     setExpandedPages(prev => ({
       ...prev,
-      [pageNumber]: !prev[pageNumber]
+      [id]: !prev[id]
     }));
   };
 
@@ -107,7 +120,7 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
 
       {isLoading ? (
         <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-          <p>PDF wird geladen und indexiert... Bitte warten.</p>
+          <p>PDFs werden geladen und indexiert... Bitte warten.</p>
         </div>
       ) : (
         <div style={{ marginBottom: '20px' }}>
@@ -140,7 +153,7 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
         )}
         
         {results.map((result) => {
-          const isExpanded = expandedPages[result.page];
+          const isExpanded = expandedPages[result.id];
           const matchIndex = result.text.toLowerCase().indexOf(searchTerm.toLowerCase());
           const snippetStart = Math.max(0, matchIndex - 60);
           const snippetEnd = matchIndex + 150;
@@ -148,7 +161,7 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
 
           return (
             <div 
-              key={result.page} 
+              key={result.id} 
               style={{ 
                 border: '1px solid #eaeaea', 
                 borderRadius: '8px',
@@ -168,9 +181,11 @@ export default function PdfSearch({ pdfUrl, title = "PDF Durchsuchen" }) {
                 flexWrap: 'wrap', // Erlaubt den Umbruch auf sehr kleinen Handy-Displays
                 gap: '10px'
               }}>
-                <h4 style={{ margin: 0, fontSize: '1rem' }}>Seite {result.page}</h4>
+                <h4 style={{ margin: 0, fontSize: '1rem', color: '#0070f3' }}>
+                  {result.pdfTitle} <span style={{color: '#666', fontSize: '0.9rem'}}>| Seite {result.page}</span>
+                </h4>
                 <button 
-                  onClick={() => toggleExpand(result.page)}
+                  onClick={() => toggleExpand(result.id)}
                   style={{
                     background: '#0070f3',
                     color: 'white',

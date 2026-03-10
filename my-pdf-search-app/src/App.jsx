@@ -5,6 +5,13 @@ export default function App() {
   // Erkennt, ob die Seite innerhalb eines iFrames geladen wird
   const isEmbedded = window.self !== window.top;
 
+  // Liste aller deiner PDFs aus dem public-Ordner
+  const pdfFiles = [
+    { url: "/ZAppSequences-1.pdf", title: "ZApp Sequences" },
+    { url: "/Full List Royal Rife Frequencies.pdf", title: "Royal Rife Frequencies" },
+    { url: "/new_a5_The+DNA-related+Pathogen+Frequency+Sets_v1.pdf", title: "DNA Pathogen Sets" }
+  ];
+
   return (
     <div style={{ 
       padding: isEmbedded ? '0' : '20px 10px', // Kein Padding im iFrame, schmal auf Mobile
@@ -15,7 +22,7 @@ export default function App() {
       backgroundColor: isEmbedded ? 'transparent' : 'var(--bg-color)' // Transparent im iFrame
     }}>
       <PdfSearch 
-        pdfUrl="/ZAppSequences-1.pdf" 
+        pdfList={pdfFiles} 
         title="Frequenz-Datenbank durchsuchen" 
       />
     </div>
